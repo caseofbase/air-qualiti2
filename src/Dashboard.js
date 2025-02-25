@@ -298,21 +298,20 @@ const Dashboard = () => {
 
   const fetchAirQualityData = async () => {
     try {
+      setIsLoading(true);
+      console.log('Fetching data from API...');
       const response = await fetch('http://localhost:5000/api/data');
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      console.log('Raw data from API:', {
-        city: city,
-        firstRow: data[0],
-        pm25Example: data[0]?.['PM 2.5'],
-        pm10Example: data[0]?.['PM 10']
+      console.log('Received data:', {
+        length: data?.length || 0,
+        firstRecord: data?.[0]
       });
-      const last60DaysData = getLast60Days(data);
-      setAirQualityData(last60DaysData);
+      setAirQualityData(data);
     } catch (error) {
-      console.error('Error fetching air quality:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setIsLoading(false);
     }
@@ -327,9 +326,8 @@ const Dashboard = () => {
     
     fetchData();
     
-    // Set up interval to refresh data every 5 minutes
-    const interval = setInterval(fetchData, 300000);
-    
+    // Refresh data every hour
+    const interval = setInterval(fetchData, 60 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -382,6 +380,43 @@ const Dashboard = () => {
       });
     }
   }, [airQualityData, hasHVAC, hasEcologica, activeDatasets, anxietyLevel]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch('http://localhost:5000/api/data');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        setAirQualityData(data);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+
+    // Check every hour
+    const interval = setInterval(loadData, 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Add loading state
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  // Debug logging
+  console.log('Current data:', {
+    dataLength: airQualityData.length,
+    sampleData: airQualityData[0],
+    city: city,
+    anxietyLevel: anxietyLevel
+  });
 
   return (
     <>
