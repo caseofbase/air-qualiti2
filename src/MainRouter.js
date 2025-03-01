@@ -1,6 +1,6 @@
 // MainRouter.js
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import Navbar from './Navbar';
 import Login from './Login';
@@ -108,7 +108,7 @@ const MainRouter = ({ user, session }) => {
   if (loading) return <div>Loading...</div>;
 
   return (
-    <Router>
+    <>
       <Navbar />
       <Routes>
         {/* Public routes */}
@@ -168,7 +168,7 @@ const MainRouter = ({ user, session }) => {
           } 
         />
       </Routes>
-    </Router>
+    </>
   );
 };
 
