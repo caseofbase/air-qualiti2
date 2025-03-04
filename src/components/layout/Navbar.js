@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from './supabaseClient';
-import logo from './icons/logo.png';
+import { supabase } from '../../supabaseClient';
+import logo from '../../icons/logo.png';
 
 const Navbar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -20,7 +20,7 @@ const Navbar = () => {
 
   return (
     <nav style={styles.navbar}>
-       <h1 style={styles.logo}>
+      <h1 style={styles.logo}>
         <img src={logo} alt="Logo" style={{ width: '180px', height: '40px' }} />
       </h1>
 
@@ -38,7 +38,7 @@ const Navbar = () => {
         {dropdownOpen && (
           <div style={styles.dropdownContent}>
             <p onClick={handleLogout} style={styles.dropdownItem}>Logout</p>
-            <p onClick={() => navigate('/UserPreferences')} style={styles.dropdownItem}>Preferences</p>
+            <p onClick={() => navigate('/preferences')} style={styles.dropdownItem}>Preferences</p>
           </div>
         )}
       </div>
@@ -49,7 +49,7 @@ const Navbar = () => {
 const styles = {
   navbar: {
     display: 'flex',
-    justifyContent: 'space-between', // Space out logo and dropdown to opposite ends
+    justifyContent: 'space-between',
     alignItems: 'center',
     padding: '10px 20px',
     backgroundColor: '#dff5c1',
@@ -96,4 +96,4 @@ const styles = {
   },
 };
 
-export default Navbar;
+export default Navbar; 

@@ -3,14 +3,14 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import Navbar from './Navbar';
-import Login from './Login';
-import SignUp from './signUp';
-import Dashboard from './Dashboard';
+import Login from './pages/login';
+import SignUp from './pages/signUp';
+import Dashboard from './pages/dashboard/Dashboard';
 import ThankYou from './ThankYou';
-import WelcomePage from './WelcomePage';
+import WelcomePage from './pages/WelcomePage';
 import Questionnaire from './Questionnaire';
-import UserPreferences from './UserPreferences';
-import ResetPassword from './ResetPassword';
+import UserPreferences from './pages/UserPreferences';
+import ResetPassword from './pages/ResetPassword';
 
 const MainRouter = ({ user, session }) => {
   const [hasPreferences, setHasPreferences] = useState(false);
@@ -152,6 +152,14 @@ const MainRouter = ({ user, session }) => {
           element={
             <ProtectedRoute>
               <UserPreferences />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/brainhealth"
+          element={
+            <ProtectedRoute>
+              <BrainHealthPM2_5 />
             </ProtectedRoute>
           }
         />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from './supabaseClient';
+import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import './styles.css';
 
@@ -11,7 +11,7 @@ const UserPreferences = () => {
     'Dallas',
     'Boston',
     'Miami',
-    'Houston'
+    'Calgary'
   ].sort());
 
   const [preferences, setPreferences] = useState({

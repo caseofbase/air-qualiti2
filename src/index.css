@@ -1,86 +1,13 @@
 body {
-    font-family: 'Montserrat', sans-serif;
-    background-color: #f9f9f9;
-    margin: 0;
-    padding: 0;
-  }
-  
-  h1, h2, h3 {
-    font-weight: 700;
-    color: #333;
-  }
-  
-  input, button, select {
-    font-family: inherit;
-    font-size: 16px;
-    padding: 10px;
-    margin: 10px 0;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-    width: 100%;
-  }
-  
-  button {
-    background-color: #4caf50;
-    color: white;
-    border: none;
-    cursor: pointer;
-  }
-  
-  button:hover {
-    background-color: #45a049;
-  }
-  
-  .container {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 20px;
-    background-color: white;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-  }
-  
-  .form-group {
-    margin-bottom: 20px;
-  }
-  
-  label {
-    font-weight: 600;
-  }
-  
-  .error {
-    color: red;
-  }
-  
-  .welcome-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
-    background-color: #f9f9f9;
-  }
-  
-  .welcome-container h1 {
-    font-size: 2.5rem;
-    margin-bottom: 20px;
-  }
-  
-  .button-container {
-    display: flex;
-    gap: 20px;
-  }
-  
-  button {
-    padding: 15px 30px;
-    font-size: 1.2rem;
-    border-radius: 10px;
-    border: none;
-    background-color: #4caf50;
-    color: white;
-    cursor: pointer;
-  }
-  
-  button:hover {
-    background-color: #45a049;
-  }
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+} 
