@@ -69,6 +69,7 @@ const DatasetToggle = ({ name, isActive, onToggle, color }) => (
 
 const PM25Chart = ({ userPreferences }) => {
   const [chartData, setChartData] = useState(null);
+  const [weatherData, setWeatherData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeDatasets, setActiveDatasets] = useState({
@@ -83,17 +84,23 @@ const PM25Chart = ({ userPreferences }) => {
     }));
   };
 
+  const calculateDaysOverThreshold = (data, threshold) => {
+    return data.filter(day => parseFloat(day.y) > threshold).length;
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data, error } = await supabase
+        const { data, error: dataError } = await supabase
           .from('weather_data')
           .select('*')
           .eq('city', userPreferences.city)
           .order('created_at', { ascending: false })
           .limit(60);
 
-        if (error) throw error;
+        if (dataError) throw dataError;
+
+        setWeatherData(data);
 
         const formattedData = {
           labels: data.map(item => new Date(item.created_at)),
@@ -113,12 +120,24 @@ const PM25Chart = ({ userPreferences }) => {
         };
 
         if (userPreferences.hasHVAC || userPreferences.hasEcologica) {
+          const adjustedData = data.map(item => {
+            let adjustedValue = item.pm25;
+            if (userPreferences.hasHVAC && userPreferences.hasEcologica) {
+              adjustedValue *= 0.5;
+            } else if (userPreferences.hasHVAC) {
+              adjustedValue *= 0.7;
+            } else if (userPreferences.hasEcologica) {
+              adjustedValue *= 0.6;
+            }
+            return {
+              x: new Date(item.created_at),
+              y: adjustedValue
+            };
+          });
+
           formattedData.datasets.push({
             label: 'PM2.5 with Your Preferences',
-            data: data.map(item => ({
-              x: new Date(item.created_at),
-              y: calculateAdjustedValue(item.pm25, userPreferences)
-            })),
+            data: adjustedData,
             borderColor: 'rgb(144, 238, 144)',
             backgroundColor: 'rgba(144, 238, 144, 0.1)',
             borderWidth: 2,
@@ -127,9 +146,9 @@ const PM25Chart = ({ userPreferences }) => {
         }
 
         setChartData(formattedData);
-      } catch (error) {
-        console.error('Error fetching PM2.5 data:', error);
-        setError(error.message);
+      } catch (err) {
+        console.error('Error fetching PM2.5 data:', err);
+        setError('Failed to load PM2.5 data');
       } finally {
         setIsLoading(false);
       }
@@ -140,16 +159,9 @@ const PM25Chart = ({ userPreferences }) => {
     }
   }, [userPreferences]);
 
-  const calculateAdjustedValue = (value, preferences) => {
-    if (preferences.hasHVAC && preferences.hasEcologica) return value * 0.5;
-    if (preferences.hasHVAC) return value * 0.7;
-    if (preferences.hasEcologica) return value * 0.6;
-    return value;
-  };
-
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error loading PM2.5 data: {error}</div>;
-  if (!chartData) return <div>No PM2.5 data available</div>;
+  if (isLoading) return <div>Loading PM2.5 data...</div>;
+  if (error) return <div>Error: {error}</div>;
+  if (!chartData || !weatherData.length) return <div>No PM2.5 data available</div>;
 
   const { hasHVAC, hasEcologica } = userPreferences;
 
@@ -191,30 +203,67 @@ const PM25Chart = ({ userPreferences }) => {
   };
 
   return (
-    <div className="chart-wrapper">
-      <div style={{ height: '400px', width: '100%' }}>
-        <Line data={chartData} options={options} />
-      </div>
-      <div style={{ 
-        marginTop: '20px',
-        display: 'flex',
-        gap: '20px',
-        justifyContent: 'center'
-      }}>
-        <DatasetToggle 
-          name="Original PM2.5" 
-          isActive={activeDatasets['Original PM2.5']} 
-          onToggle={toggleDataset}
-          color="rgb(0, 100, 0)"
-        />
-        {(hasHVAC || hasEcologica) && (
+    <div className="content-wrapper">
+      <div className="chart-side">
+        <div style={{ height: '400px', width: '100%' }}>
+          <Line data={chartData} options={options} />
+        </div>
+        <div style={{ 
+          marginTop: '20px',
+          display: 'flex',
+          gap: '20px',
+          justifyContent: 'center'
+        }}>
           <DatasetToggle 
-            name="PM2.5 with Your Preferences" 
-            isActive={activeDatasets['PM2.5 with Your Preferences']} 
+            name="Original PM2.5" 
+            isActive={activeDatasets['Original PM2.5']} 
             onToggle={toggleDataset}
-            color="rgb(144, 238, 144)"
+            color="rgb(0, 100, 0)"
           />
-        )}
+          {(hasHVAC || hasEcologica) && (
+            <DatasetToggle 
+              name="PM2.5 with Your Preferences" 
+              isActive={activeDatasets['PM2.5 with Your Preferences']} 
+              onToggle={toggleDataset}
+              color="rgb(144, 238, 144)"
+            />
+          )}
+        </div>
+      </div>
+      
+      <div className="data-side">
+        <div className="key-data-title">
+          KEY DATA POINTS
+        </div>
+        <div className="key-data-points">
+          <div className="key-data-point">
+            <span className="key-data-number">
+              {calculateDaysOverThreshold(chartData.datasets[0].data, 12)}
+            </span>
+            <span className="key-data-label">
+              days over<br />
+              12μg/m³
+            </span>
+          </div>
+          <div className="key-data-point">
+            <span className="key-data-number">
+              {calculateDaysOverThreshold(chartData.datasets[0].data, 35)}
+            </span>
+            <span className="key-data-label">
+              days over<br />
+              35μg/m³
+            </span>
+          </div>
+          <div className="key-data-point">
+            <span className="key-data-number">
+              {calculateDaysOverThreshold(chartData.datasets[0].data, 55)}
+            </span>
+            <span className="key-data-label">
+              days over<br />
+              55μg/m³
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );

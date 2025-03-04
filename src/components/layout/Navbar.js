@@ -38,7 +38,6 @@ const Navbar = () => {
         {dropdownOpen && (
           <div style={styles.dropdownContent}>
             <p onClick={handleLogout} style={styles.dropdownItem}>Logout</p>
-            <p onClick={() => navigate('/preferences')} style={styles.dropdownItem}>Preferences</p>
           </div>
         )}
       </div>
@@ -80,6 +79,7 @@ const styles = {
     padding: '10px 20px',
     cursor: 'pointer',
     color: '#333',
+    margin: 0,
   },
   hamburger: {
     width: '20px',

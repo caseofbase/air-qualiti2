@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
+import DatePicker from 'react-datepicker';
+import "react-datepicker/dist/react-datepicker.css";
 import './styles.css';
 
 const UserPreferences = () => {
@@ -22,6 +24,7 @@ const UserPreferences = () => {
     city: 'Toronto',
     anxiety_base_level: 5, // Default middle value
     track_anxiety: false, // New checkbox state
+    birthdate: null,
   });
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
@@ -100,7 +103,8 @@ const UserPreferences = () => {
           last_name: preferences.last_name,
           city: preferences.city,
           anxiety_base_level: Number(preferences.anxiety_base_level),
-          track_anxiety: preferences.track_anxiety
+          track_anxiety: preferences.track_anxiety,
+          birthdate: preferences.birthdate
         }, {
           onConflict: 'user_id',
           ignoreDuplicates: false
@@ -143,6 +147,24 @@ const UserPreferences = () => {
                 ...preferences, 
                 last_name: e.target.value 
               })}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Birthdate:</label>
+            <DatePicker
+              selected={preferences.birthdate ? new Date(preferences.birthdate) : null}
+              onChange={(date) => setPreferences({
+                ...preferences,
+                birthdate: date
+              })}
+              dateFormat="MMMM d, yyyy"
+              placeholderText="Select your birthdate"
+              className="date-picker"
+              maxDate={new Date()}
+              showYearDropdown
+              scrollableYearDropdown
+              yearDropdownItemNumber={100}
             />
           </div>
 

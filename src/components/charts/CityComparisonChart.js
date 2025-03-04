@@ -1,6 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js';
+import { Bar } from 'react-chartjs-2';
 import { supabase } from '../../supabaseClient';
+
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 const CityComparisonChart = ({ userPreferences }) => {
   const [chartData, setChartData] = useState(null);
@@ -10,7 +29,12 @@ const CityComparisonChart = ({ userPreferences }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // First get all unique cities from weather_data table instead of user_preferences
+        // Get data for the last 7 days
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 7);
+
+        // First get all unique cities
         const { data: citiesData, error: citiesError } = await supabase
           .from('weather_data')
           .select('city')
@@ -20,42 +44,48 @@ const CityComparisonChart = ({ userPreferences }) => {
 
         const cities = citiesData.map(item => item.city);
 
-        // Then fetch data for all cities
+        // Then fetch last 7 days of data for all cities
         const { data: weatherData, error: dataError } = await supabase
           .from('weather_data')
           .select('*')
           .in('city', cities)
-          .order('created_at', { ascending: false });
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', endDate.toISOString());
 
         if (dataError) throw dataError;
 
-        // Process data for each city
-        const cityDatasets = cities.map((city, index) => {
+        // Calculate weekly averages for each city
+        const cityAverages = cities.map(city => {
           const cityData = weatherData.filter(item => item.city === city);
-          const colors = [
-            'rgb(0, 100, 0)',
-            'rgb(144, 238, 144)',
-            'rgb(34, 139, 34)',
-            'rgb(60, 179, 113)'
-          ];
-
+          const average = cityData.reduce((sum, item) => sum + (item.pm25 || 0), 0) / (cityData.length || 1);
           return {
-            label: city,
-            data: cityData.map(item => ({
-              x: new Date(item.created_at),
-              y: item.pm25
-            })),
-            borderColor: colors[index % colors.length],
-            backgroundColor: colors[index % colors.length].replace('rgb', 'rgba').replace(')', ', 0.1)'),
-            borderWidth: 2,
-            tension: 0.1
+            city,
+            average: parseFloat(average.toFixed(1))
           };
         });
 
+        // Sort cities by average PM2.5 levels
+        cityAverages.sort((a, b) => b.average - a.average);
+
         setChartData({
-          datasets: cityDatasets
+          labels: cityAverages.map(item => item.city),
+          datasets: [{
+            label: 'Weekly Average PM2.5',
+            data: cityAverages.map(item => item.average),
+            backgroundColor: cityAverages.map((_, index) => {
+              const colors = [
+                'rgba(0, 100, 0, 0.7)',
+                'rgba(144, 238, 144, 0.7)',
+                'rgba(34, 139, 34, 0.7)',
+                'rgba(60, 179, 113, 0.7)'
+              ];
+              return colors[index % colors.length];
+            }),
+            borderColor: 'rgba(0, 100, 0, 1)',
+            borderWidth: 1
+          }]
         });
-        setError(null);
+
       } catch (err) {
         console.error('Error fetching city comparison data:', err);
         setError('Failed to load city comparison data');
@@ -75,42 +105,45 @@ const CityComparisonChart = ({ userPreferences }) => {
     responsive: true,
     maintainAspectRatio: false,
     scales: {
-      x: {
-        type: 'time',
-        time: {
-          unit: 'day',
-          displayFormats: {
-            day: 'MMM d'
-          }
-        },
-        title: {
-          display: true,
-          text: 'Date'
-        }
-      },
       y: {
         beginAtZero: true,
         title: {
           display: true,
-          text: 'PM2.5 μg/m³'
+          text: 'PM2.5 μg/m³ (Weekly Average)'
+        }
+      },
+      x: {
+        title: {
+          display: true,
+          text: 'Cities'
         }
       }
     },
     plugins: {
       legend: {
+        display: false
+      },
+      title: {
         display: true,
-        position: 'bottom'
+        text: 'Weekly Average PM2.5 by City',
+        color: '#2e7d32',
+        font: {
+          size: 16
+        }
       },
       tooltip: {
-        mode: 'index',
-        intersect: false
+        callbacks: {
+          label: function(context) {
+            return `Average: ${context.parsed.y} μg/m³`;
+          }
+        }
       }
     }
   };
 
   return (
     <div style={{ height: '400px', width: '100%' }}>
-      <Line data={chartData} options={options} />
+      <Bar data={chartData} options={options} />
     </div>
   );
 };

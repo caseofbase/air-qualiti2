@@ -51,6 +51,7 @@ const DatasetToggle = ({ name, isActive, onToggle, color }) => (
 
 const PM10Chart = ({ userPreferences }) => {
   const [chartData, setChartData] = useState(null);
+  const [weatherData, setWeatherData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeDatasets, setActiveDatasets] = useState({
@@ -72,14 +73,16 @@ const PM10Chart = ({ userPreferences }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data, error } = await supabase
+        const { data, error: dataError } = await supabase
           .from('weather_data')
           .select('*')
           .eq('city', userPreferences.city)
           .order('created_at', { ascending: false })
           .limit(60);
 
-        if (error) throw error;
+        if (dataError) throw dataError;
+
+        setWeatherData(data);
 
         const formattedData = {
           labels: data.map(item => new Date(item.created_at)),
@@ -99,12 +102,24 @@ const PM10Chart = ({ userPreferences }) => {
         };
 
         if (userPreferences.hasHVAC || userPreferences.hasEcologica) {
+          const adjustedData = data.map(item => {
+            let adjustedValue = item.pm10;
+            if (userPreferences.hasHVAC && userPreferences.hasEcologica) {
+              adjustedValue *= 0.5;
+            } else if (userPreferences.hasHVAC) {
+              adjustedValue *= 0.7;
+            } else if (userPreferences.hasEcologica) {
+              adjustedValue *= 0.6;
+            }
+            return {
+              x: new Date(item.created_at),
+              y: adjustedValue
+            };
+          });
+
           formattedData.datasets.push({
             label: 'PM10 with Your Preferences',
-            data: data.map(item => ({
-              x: new Date(item.created_at),
-              y: calculateAdjustedValue(item.pm10, userPreferences)
-            })),
+            data: adjustedData,
             borderColor: 'rgb(144, 238, 144)',
             backgroundColor: 'rgba(144, 238, 144, 0.1)',
             borderWidth: 2,
@@ -113,9 +128,9 @@ const PM10Chart = ({ userPreferences }) => {
         }
 
         setChartData(formattedData);
-      } catch (error) {
-        console.error('Error fetching PM10 data:', error);
-        setError(error.message);
+      } catch (err) {
+        console.error('Error fetching PM10 data:', err);
+        setError('Failed to load PM10 data');
       } finally {
         setIsLoading(false);
       }
@@ -126,16 +141,9 @@ const PM10Chart = ({ userPreferences }) => {
     }
   }, [userPreferences]);
 
-  const calculateAdjustedValue = (value, preferences) => {
-    if (preferences.hasHVAC && preferences.hasEcologica) return value * 0.5;
-    if (preferences.hasHVAC) return value * 0.7;
-    if (preferences.hasEcologica) return value * 0.6;
-    return value;
-  };
-
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error loading PM10 data: {error}</div>;
-  if (!chartData) return <div>No PM10 data available</div>;
+  if (isLoading) return <div>Loading PM10 data...</div>;
+  if (error) return <div>Error: {error}</div>;
+  if (!chartData || !weatherData.length) return <div>No PM10 data available</div>;
 
   const { hasHVAC, hasEcologica } = userPreferences;
 
