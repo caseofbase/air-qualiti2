@@ -1,7 +1,7 @@
 // MainRouter.js
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { supabase } from './supabaseClient';
+import { supabase } from '../server/services/supabaseClient';
 import Navbar from './Navbar';
 import Login from './pages/login';
 import SignUp from './pages/signUp';

@@ -13,7 +13,9 @@ const UserPreferences = () => {
     'Dallas',
     'Boston',
     'Miami',
-    'Calgary'
+    'Calgary',
+    'Edmonton'
+    
   ].sort());
 
   const [preferences, setPreferences] = useState({

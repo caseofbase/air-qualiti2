@@ -1,31 +1,30 @@
 // App.js
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Layout from './components/layout/Layout';
+import Navbar from './components/layout/Navbar';
+import Sidebar from './components/layout/Sidebar';
 import Dashboard from './pages/dashboard/Dashboard';
-import UserPreferences from './pages/UserPreferences';
-import Login from './pages/login';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import './styles/style.css';  // Updated path
+import AnxietyDashboard from './pages/dashboard/AnxietyDashboard';
+import Preferences from './pages/UserPreferences';
+import './styles/style.css';
 
-const App = () => {
-  const [city, setCity] = useState('Toronto');
-
+function App() {
   return (
     <Router>
-      <Layout city={city} onCityChange={setCity}>
-        <Routes>
-          <Route path="/" element={<Dashboard city={city} />} />
-          <Route path="/dashboard" element={<Dashboard city={city} />} />
-          <Route path="/analytics" element={<Dashboard city={city} />} />
-          <Route path="/preferences" element={<UserPreferences />} />
-          <Route path="/Login" element={<Login />} />
-          <Route path="/user-preferences" element={<UserPreferences />} />
-          <Route path="/UserPreferences" element={<UserPreferences />} />
-        </Routes>
-      </Layout>
+      <div className="App">
+        <Navbar />
+        <Sidebar />
+        <div className="main-content">
+          <Routes>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/AnxietyDashboard" element={<AnxietyDashboard />} />
+            <Route path="/preferences" element={<Preferences />} />
+            <Route path="/" element={<Dashboard />} />
+          </Routes>
+        </div>
+      </div>
     </Router>
   );
-};
+}
 
 export default App;

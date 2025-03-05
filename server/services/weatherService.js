@@ -1,6 +1,12 @@
 const axios = require('axios');
-const supabase = require('../db/database');
+const { createClient } = require('@supabase/supabase-js');
 const AppError = require('../utils/AppError');
+
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 const API_KEY = '3f8a4d2a8875fb203575175662bb64d7';
 const BASE_URL = 'https://api.openweathermap.org/data/2.5';
@@ -12,8 +18,15 @@ const cities = [
   'Dallas', 
   'Boston',
   'Miami',
-  'Houston'
+  'Houston',
+  'Calgary',
+  'Edmonton'
 ];
+
+const getAirQualityLabel = (aqi) => {
+  const labels = ['Good', 'Fair', 'Moderate', 'Poor', 'Very Poor'];
+  return labels[aqi - 1] || 'Unknown';
+};
 
 const fetchCityData = async (city) => {
   try {
@@ -34,7 +47,6 @@ const fetchCityData = async (city) => {
     ]);
 
     return {
-      created_at: new Date().toISOString(), // Supabase timestamp
       city: city,
       temp: weatherData.data.main.temp,
       pm25: airData.data.list[0].components.pm2_5,
@@ -45,17 +57,6 @@ const fetchCityData = async (city) => {
     console.error(`Error fetching data for ${city}:`, error);
     return null;
   }
-};
-
-const getAirQualityLabel = (aqi) => {
-  const labels = {
-    1: 'Good',
-    2: 'Fair',
-    3: 'Moderate',
-    4: 'Poor',
-    5: 'Very Poor'
-  };
-  return labels[aqi] || 'Unknown';
 };
 
 exports.fetchAndStoreWeatherData = async () => {
@@ -143,32 +144,35 @@ const calculateAverages = async (city) => {
 exports.calculateAverages = calculateAverages;
 
 exports.getWeatherDataService = async ({ city, days, metrics }) => {
+  try {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
 
     let query = supabase
-        .from('weather_data')
-        .select(metrics.join(','))
-        .gte('created_at', cutoffDate.toISOString())
-        .order('created_at', { ascending: true });
+      .from('weather_data')
+      .select(metrics.join(','))
+      .gte('created_at', cutoffDate.toISOString())
+      .order('created_at', { ascending: true });
 
     if (city) {
-        query = query.eq('city', city);
+      query = query.eq('city', city);
     }
 
     const { data, error } = await query;
 
-    if (error) {
-        throw new AppError('Database query failed', 500);
-    }
+    if (error) throw error;
 
     return data.map(item => ({
-        date: new Date(item.created_at),
-        ...metrics.reduce((acc, metric) => ({
-            ...acc,
-            [metric]: item[metric]
-        }), {})
+      ...metrics.reduce((acc, metric) => ({
+        ...acc,
+        [metric]: item[metric]
+      }), {}),
+      timestamp: new Date(item.created_at)
     }));
+  } catch (error) {
+    console.error('Error in getWeatherDataService:', error);
+    throw error;
+  }
 };
 
 exports.getCitiesService = async () => {

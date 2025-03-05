@@ -20,6 +20,16 @@ const Sidebar = () => {
                 </Nav.Link>
                 <Nav.Link 
                     as={Link} 
+                    to="/AnxietyDashboard"
+                    active={(location.pathname === '/AnxietyDashboard').toString()}
+                    style={styles.link}
+                    className={location.pathname === '/AnxietyDashboard' ? 'active-link' : ''}
+                >
+                    <i className="bi bi-gear"></i>
+                    Anxiety Dashboard
+                </Nav.Link>
+                <Nav.Link 
+                    as={Link} 
                     to="/preferences"
                     active={(location.pathname === '/preferences').toString()}
                     style={styles.link}

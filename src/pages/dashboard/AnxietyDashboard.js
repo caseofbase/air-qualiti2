@@ -1,28 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
-import PM25Chart from '../../components/charts/PM25Chart';
-import PM10Chart from '../../components/charts/PM10Chart';
-import CityComparisonChart from '../../components/charts/CityComparisonChart';
-import AnxietyRiskChart from '../../components/charts/AnxietyRiskChart';
+import WeeklyAnxietyChart from '../../components/charts/WeeklyAnxietyChart';
+import MonthlyAnxietyChart from '../../components/charts/MonthlyAnxietyChart';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js';
 
-// Utility function for deeper sleep calculation
-const calculateDeeperSleepMinutes = (data, hasHVAC, hasEcologica) => {
-  const getAdjustedValue = (value) => {
-    if (hasHVAC && hasEcologica) return value * 0.5;
-    if (hasHVAC) return value * 0.7;
-    if (hasEcologica) return value * 0.6;
-    return value;
-  };
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
-  const daysUnderThreshold = data.filter(day => {
-    const adjustedValue = getAdjustedValue(parseFloat(day['PM 2.5']));
-    return adjustedValue <= 5;
-  }).length;
-
-  return daysUnderThreshold * 8 * 60;
-};
-
-const Dashboard = () => {
+const AnxietyDashboard = () => {
   const [userPreferences, setUserPreferences] = useState({
     hasHVAC: false,
     hasEcologica: false,
@@ -65,22 +67,19 @@ const Dashboard = () => {
 
     const fetchAirQualityData = async () => {
       try {
-        // Get data from the weather_data table in Supabase
+        // Get last 30 days of data to cover both weekly and monthly calculations
         const { data, error } = await supabase
           .from('weather_data')
           .select('*')
-          .eq('city', userPreferences.city) // Filter by the user's city
+          .eq('city', userPreferences.city)
           .order('created_at', { ascending: false })
-          .limit(60);
+          .limit(30);
 
         if (error) throw error;
 
-        // Transform the data to match the expected format
         const transformedData = data.map(item => ({
           date: item.created_at,
-          'PM 2.5': item.pm25,
-          'PM 10': item.pm10,
-          temp: item.temp,
+          pm25: item.pm25,
           city: item.city
         }));
         
@@ -94,7 +93,6 @@ const Dashboard = () => {
     };
 
     fetchUserPreferences();
-    // Only fetch air quality data after we have the user's city
     if (userPreferences.city) {
       fetchAirQualityData();
     }
@@ -106,59 +104,30 @@ const Dashboard = () => {
     }, 60 * 60 * 1000); // Refresh every hour
 
     return () => clearInterval(interval);
-  }, [userPreferences.city]); // Re-run when city changes
+  }, [userPreferences.city]);
 
   if (isLoading) return <div>Loading...</div>;
 
   return (
     <div className="dashboard">
-      {airQualityData.length > 0 && (
-        <div className="deeper-sleep-banner" style={{
-          backgroundColor: '#90c789',
-          color: '#1a472a',
-          padding: '20px',
-          borderRadius: '8px',
-          marginBottom: '20px',
-          textAlign: 'center',
-          fontSize: '1.5rem',
-          fontWeight: 'bold'
-        }}>
-          {calculateDeeperSleepMinutes(
-            airQualityData, 
-            userPreferences.hasHVAC, 
-            userPreferences.hasEcologica
-          ).toLocaleString()} minutes of deeper sleep
-        </div>
-      )}
-      
       <h1>
         {userPreferences.firstName ? `${userPreferences.firstName}'s ` : ''}
-        {userPreferences.city} Dashboard
+        Anxiety Risk Dashboard
       </h1>
       
       <div className="dashboard-container">
         <div className="dashboard-section">
-          <h2>PM2.5 Levels</h2>
-          <PM25Chart userPreferences={userPreferences} />
+          <h2>Weekly Anxiety Risk</h2>
+          <WeeklyAnxietyChart userPreferences={userPreferences} />
         </div>
 
         <div className="dashboard-section">
-          <h2>PM10 Levels</h2>
-          <PM10Chart userPreferences={userPreferences} />
-        </div>
-
-        <div className="dashboard-section">
-          <h2>City Comparison</h2>
-          <CityComparisonChart userPreferences={userPreferences} />
-        </div>
-
-        <div className="dashboard-section">
-          <h2>Anxiety Risk</h2>
-          <AnxietyRiskChart userPreferences={userPreferences} />
+          <h2>Monthly Anxiety Risk</h2>
+          <MonthlyAnxietyChart userPreferences={userPreferences} />
         </div>
       </div>
     </div>
   );
 };
 
-export default Dashboard;
+export default AnxietyDashboard; 
