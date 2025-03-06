@@ -25,8 +25,8 @@ ChartJS.register(
   TimeScale
 );
 
-const calculateHVACReduction = (value) => {
-  return value * 0.7; // 30% reduction
+const calculateIndoorReduction = (value) => {
+  return value * 0.7; // 30% reduction for indoor air quality
 };
 
 const calculateEcologicaReduction = (value) => {
@@ -37,15 +37,12 @@ const calculateCombinedReduction = (value) => {
   return value * 0.5; // 50% reduction
 };
 
-const calculateImpact = (value, hasHVAC, hasEcologica) => {
-  if (hasHVAC && hasEcologica) {
+const calculateImpact = (value, hasEcologica) => {
+  const indoorValue = calculateIndoorReduction(value);
+  if (hasEcologica) {
     return calculateCombinedReduction(value);
-  } else if (hasHVAC) {
-    return calculateHVACReduction(value);
-  } else if (hasEcologica) {
-    return calculateEcologicaReduction(value);
   }
-  return value;
+  return indoorValue;
 };
 
 const DatasetToggle = ({ name, isActive, onToggle, color }) => (
@@ -73,9 +70,10 @@ const PM25Chart = ({ userPreferences }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeDatasets, setActiveDatasets] = useState({
-    'Original PM2.5': true,
-    'PM2.5 with Your Preferences': true
+    'Outdoor': true,
+    'Indoor': true
   });
+  const [showEcologica, setShowEcologica] = useState(userPreferences.hasEcologica);
 
   const toggleDataset = (name) => {
     setActiveDatasets(prev => ({
@@ -106,7 +104,7 @@ const PM25Chart = ({ userPreferences }) => {
           labels: data.map(item => new Date(item.created_at)),
           datasets: [
             {
-              label: 'PM2.5 Levels',
+              label: 'Outdoor',
               data: data.map(item => ({
                 x: new Date(item.created_at),
                 y: item.pm25
@@ -115,31 +113,30 @@ const PM25Chart = ({ userPreferences }) => {
               backgroundColor: 'rgba(0, 100, 0, 0.1)',
               borderWidth: 2,
               tension: 0.1
+            },
+            {
+              label: 'Indoor',
+              data: data.map(item => ({
+                x: new Date(item.created_at),
+                y: calculateIndoorReduction(item.pm25)
+              })),
+              borderColor: 'rgb(144, 238, 144)',
+              backgroundColor: 'rgba(144, 238, 144, 0.1)',
+              borderWidth: 2,
+              tension: 0.1
             }
           ]
         };
 
-        if (userPreferences.hasHVAC || userPreferences.hasEcologica) {
-          const adjustedData = data.map(item => {
-            let adjustedValue = item.pm25;
-            if (userPreferences.hasHVAC && userPreferences.hasEcologica) {
-              adjustedValue *= 0.5;
-            } else if (userPreferences.hasHVAC) {
-              adjustedValue *= 0.7;
-            } else if (userPreferences.hasEcologica) {
-              adjustedValue *= 0.6;
-            }
-            return {
-              x: new Date(item.created_at),
-              y: adjustedValue
-            };
-          });
-
+        if (showEcologica) {
           formattedData.datasets.push({
-            label: 'PM2.5 with Your Preferences',
-            data: adjustedData,
-            borderColor: 'rgb(144, 238, 144)',
-            backgroundColor: 'rgba(144, 238, 144, 0.1)',
+            label: 'With Ecologica',
+            data: data.map(item => ({
+              x: new Date(item.created_at),
+              y: calculateCombinedReduction(item.pm25)
+            })),
+            borderColor: 'rgb(100, 149, 237)',
+            backgroundColor: 'rgba(100, 149, 237, 0.1)',
             borderWidth: 2,
             tension: 0.1
           });
@@ -157,13 +154,11 @@ const PM25Chart = ({ userPreferences }) => {
     if (userPreferences.city) {
       fetchData();
     }
-  }, [userPreferences]);
+  }, [userPreferences, showEcologica]);
 
   if (isLoading) return <div>Loading PM2.5 data...</div>;
   if (error) return <div>Error: {error}</div>;
   if (!chartData || !weatherData.length) return <div>No PM2.5 data available</div>;
-
-  const { hasHVAC, hasEcologica } = userPreferences;
 
   const options = {
     responsive: true,
@@ -215,19 +210,23 @@ const PM25Chart = ({ userPreferences }) => {
           justifyContent: 'center'
         }}>
           <DatasetToggle 
-            name="Original PM2.5" 
-            isActive={activeDatasets['Original PM2.5']} 
+            name="Outdoor" 
+            isActive={activeDatasets['Outdoor']} 
             onToggle={toggleDataset}
             color="rgb(0, 100, 0)"
           />
-          {(hasHVAC || hasEcologica) && (
-            <DatasetToggle 
-              name="PM2.5 with Your Preferences" 
-              isActive={activeDatasets['PM2.5 with Your Preferences']} 
-              onToggle={toggleDataset}
-              color="rgb(144, 238, 144)"
-            />
-          )}
+          <DatasetToggle 
+            name="Indoor" 
+            isActive={activeDatasets['Indoor']} 
+            onToggle={toggleDataset}
+            color="rgb(144, 238, 144)"
+          />
+          <DatasetToggle 
+            name="With Ecologica" 
+            isActive={showEcologica} 
+            onToggle={() => setShowEcologica(!showEcologica)}
+            color="rgb(100, 149, 237)"
+          />
         </div>
       </div>
       

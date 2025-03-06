@@ -29,61 +29,56 @@ const CityComparisonChart = ({ userPreferences }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Get data for the last 7 days
+        // Get data for the last 60 days for all cities
         const endDate = new Date();
         const startDate = new Date();
-        startDate.setDate(startDate.getDate() - 7);
+        startDate.setDate(startDate.getDate() - 60);
 
-        // First get all unique cities
-        const { data: citiesData, error: citiesError } = await supabase
-          .from('weather_data')
-          .select('city')
-          .distinct();
-
-        if (citiesError) throw citiesError;
-
-        const cities = citiesData.map(item => item.city);
-
-        // Then fetch last 7 days of data for all cities
+        // Get all cities using a different approach
         const { data: weatherData, error: dataError } = await supabase
           .from('weather_data')
           .select('*')
-          .in('city', cities)
           .gte('created_at', startDate.toISOString())
           .lte('created_at', endDate.toISOString());
 
         if (dataError) throw dataError;
 
-        // Calculate weekly averages for each city
+        // Get unique cities from the data
+        const cities = [...new Set(weatherData.map(item => item.city))];
+
+        // Calculate 60-day averages for each city
         const cityAverages = cities.map(city => {
           const cityData = weatherData.filter(item => item.city === city);
-          const average = cityData.reduce((sum, item) => sum + (item.pm25 || 0), 0) / (cityData.length || 1);
+          const pm25Average = cityData.reduce((sum, item) => sum + (item.pm25 || 0), 0) / (cityData.length || 1);
+          const pm10Average = cityData.reduce((sum, item) => sum + (item.pm10 || 0), 0) / (cityData.length || 1);
           return {
             city,
-            average: parseFloat(average.toFixed(1))
+            pm25Average: parseFloat(pm25Average.toFixed(1)),
+            pm10Average: parseFloat(pm10Average.toFixed(1))
           };
         });
 
         // Sort cities by average PM2.5 levels
-        cityAverages.sort((a, b) => b.average - a.average);
+        cityAverages.sort((a, b) => b.pm25Average - a.pm25Average);
 
         setChartData({
           labels: cityAverages.map(item => item.city),
-          datasets: [{
-            label: 'Weekly Average PM2.5',
-            data: cityAverages.map(item => item.average),
-            backgroundColor: cityAverages.map((_, index) => {
-              const colors = [
-                'rgba(0, 100, 0, 0.7)',
-                'rgba(144, 238, 144, 0.7)',
-                'rgba(34, 139, 34, 0.7)',
-                'rgba(60, 179, 113, 0.7)'
-              ];
-              return colors[index % colors.length];
-            }),
-            borderColor: 'rgba(0, 100, 0, 1)',
-            borderWidth: 1
-          }]
+          datasets: [
+            {
+              label: '60-Day Average PM2.5',
+              data: cityAverages.map(item => item.pm25Average),
+              backgroundColor: 'rgba(0, 100, 0, 0.7)',
+              borderColor: 'rgba(0, 100, 0, 1)',
+              borderWidth: 1
+            },
+            {
+              label: '60-Day Average PM10',
+              data: cityAverages.map(item => item.pm10Average),
+              backgroundColor: 'rgba(144, 238, 144, 0.7)',
+              borderColor: 'rgba(144, 238, 144, 1)',
+              borderWidth: 1
+            }
+          ]
         });
 
       } catch (err) {

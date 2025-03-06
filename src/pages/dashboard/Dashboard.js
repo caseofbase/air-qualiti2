@@ -4,14 +4,16 @@ import PM25Chart from '../../components/charts/PM25Chart';
 import PM10Chart from '../../components/charts/PM10Chart';
 import CityComparisonChart from '../../components/charts/CityComparisonChart';
 import AnxietyRiskChart from '../../components/charts/AnxietyRiskChart';
+import '../../styles/style.css';
 
 // Utility function for deeper sleep calculation
-const calculateDeeperSleepMinutes = (data, hasHVAC, hasEcologica) => {
+const calculateDeeperSleepMinutes = (data, hasEcologica) => {
   const getAdjustedValue = (value) => {
-    if (hasHVAC && hasEcologica) return value * 0.5;
-    if (hasHVAC) return value * 0.7;
-    if (hasEcologica) return value * 0.6;
-    return value;
+    // Always apply indoor reduction first
+    const indoorValue = value * 0.7;
+    // Then apply Ecologica if present
+    if (hasEcologica) return value * 0.5;
+    return indoorValue;
   };
 
   const daysUnderThreshold = data.filter(day => {
@@ -24,7 +26,6 @@ const calculateDeeperSleepMinutes = (data, hasHVAC, hasEcologica) => {
 
 const Dashboard = () => {
   const [userPreferences, setUserPreferences] = useState({
-    hasHVAC: false,
     hasEcologica: false,
     city: 'Toronto',
     firstName: '',
@@ -49,7 +50,6 @@ const Dashboard = () => {
         
         if (data) {
           setUserPreferences({
-            hasHVAC: data.has_HVAC || false,
             hasEcologica: data.has_ecologgica || false,
             city: data.city || 'Toronto',
             firstName: data.first_name || '',
@@ -112,50 +112,33 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard">
-      {airQualityData.length > 0 && (
-        <div className="deeper-sleep-banner" style={{
-          backgroundColor: '#90c789',
-          color: '#1a472a',
-          padding: '20px',
-          borderRadius: '8px',
-          marginBottom: '20px',
-          textAlign: 'center',
-          fontSize: '1.5rem',
-          fontWeight: 'bold'
-        }}>
-          {calculateDeeperSleepMinutes(
-            airQualityData, 
-            userPreferences.hasHVAC, 
-            userPreferences.hasEcologica
-          ).toLocaleString()} minutes of deeper sleep
-        </div>
-      )}
-      
       <h1>
         {userPreferences.firstName ? `${userPreferences.firstName}'s ` : ''}
-        {userPreferences.city} Dashboard
+        Air Quality Dashboard
       </h1>
       
-      <div className="dashboard-container">
-        <div className="dashboard-section">
-          <h2>PM2.5 Levels</h2>
-          <PM25Chart userPreferences={userPreferences} />
+      <div className="dashboard-section">
+        <div className="chart-container">
+          <div className="chart-area">
+            <h2>PM2.5 Levels</h2>
+            <PM25Chart userPreferences={userPreferences} />
+          </div>
         </div>
+      </div>
 
-        <div className="dashboard-section">
-          <h2>PM10 Levels</h2>
-          <PM10Chart userPreferences={userPreferences} />
-        </div>
+      <div className="dashboard-section">
+        <h2>PM10 Levels</h2>
+        <PM10Chart userPreferences={userPreferences} />
+      </div>
 
-        <div className="dashboard-section">
-          <h2>City Comparison</h2>
-          <CityComparisonChart userPreferences={userPreferences} />
-        </div>
+      <div className="dashboard-section">
+        <h2>City Comparison</h2>
+        <CityComparisonChart userPreferences={userPreferences} />
+      </div>
 
-        <div className="dashboard-section">
-          <h2>Anxiety Risk</h2>
-          <AnxietyRiskChart userPreferences={userPreferences} />
-        </div>
+      <div className="dashboard-section">
+        <h2>Anxiety Risk</h2>
+        <AnxietyRiskChart userPreferences={userPreferences} />
       </div>
     </div>
   );

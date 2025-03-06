@@ -115,6 +115,34 @@ const AnxietyDashboard = () => {
         Anxiety Risk Dashboard
       </h1>
       
+      <div style={{
+        marginBottom: '20px',
+        fontSize: '1.1rem',
+        color: '#2e7d32',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        justifyContent: 'center',
+        textAlign: 'center'
+      }}>
+        Your current base level Anxiety: 
+        <a 
+          href="/preferences" 
+          style={{
+            color: '#2e7d32',
+            textDecoration: 'underline',
+            fontWeight: 'bold',
+            cursor: 'pointer'
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            window.location.href = '/preferences';
+          }}
+        >
+          {userPreferences.anxietyLevel}
+        </a>
+      </div>
+      
       <div className="dashboard-container">
         <div className="dashboard-section">
           <h2>Weekly Anxiety Risk</h2>

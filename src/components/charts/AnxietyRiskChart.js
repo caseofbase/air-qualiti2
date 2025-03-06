@@ -27,15 +27,33 @@ ChartJS.register(
 );
 
 // Utility functions
-const calculateHVACReduction = (value) => value * 0.7;
-const calculateEcologicaReduction = (value) => value * 0.6;
-const calculateCombinedReduction = (value) => value * 0.5;
+const calculateIndoorReduction = (value) => {
+  return value * 0.7; // 30% reduction for indoor air quality
+};
 
-const calculateAnxietyRisk = (baseLevel, pm10) => {
-  if (!pm10) return baseLevel; // Handle null/undefined PM10
-  if (pm10 >= 10) {
-    const increase = pm10 / 10;
-    const riskIncrease = increase * 0.12; // 12% increase per 10μg/m³
+const calculateEcologicaReduction = (value) => {
+  return value * 0.6; // 40% reduction
+};
+
+const calculateCombinedReduction = (value) => {
+  return value * 0.5; // 50% reduction
+};
+
+const calculateAnxietyRisk = (baseLevel, pm10, hasEcologica) => {
+  let adjustedPM10 = pm10;
+  
+  // Always apply indoor reduction first
+  adjustedPM10 = calculateIndoorReduction(pm10);
+  
+  // Apply Ecologica reduction if enabled
+  if (hasEcologica) {
+    adjustedPM10 = calculateCombinedReduction(pm10);
+  }
+
+  if (!adjustedPM10) return baseLevel;
+  if (adjustedPM10 >= 10) {
+    const increase = adjustedPM10 / 10;
+    const riskIncrease = increase * 0.12;
     return Math.min(10, baseLevel * (1 + riskIncrease));
   }
   return baseLevel;
@@ -65,9 +83,9 @@ const AnxietyRiskChart = ({ userPreferences }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeDatasets, setActiveDatasets] = useState({
-    'Baseline Anxiety Risk': true,
-    'Anxiety Risk with Your Preferences': true
+    'Outdoor': true
   });
+  const [showEcologica, setShowEcologica] = useState(userPreferences.hasEcologica);
   const [weatherData, setWeatherData] = useState([]);
 
   const toggleDataset = (name) => {
@@ -107,10 +125,10 @@ const AnxietyRiskChart = ({ userPreferences }) => {
           labels: data.map(item => new Date(item.created_at)),
           datasets: [
             {
-              label: 'Baseline Anxiety Risk',
+              label: 'Outdoor',
               data: data.map(item => ({
                 x: new Date(item.created_at),
-                y: calculateAnxietyRisk(userPreferences.anxietyLevel || 5, item.pm10)
+                y: calculateAnxietyRisk(userPreferences.anxietyLevel, item.pm10, false)
               })),
               borderColor: 'rgb(0, 100, 0)',
               backgroundColor: 'rgba(0, 100, 0, 0.1)',
@@ -120,27 +138,15 @@ const AnxietyRiskChart = ({ userPreferences }) => {
           ]
         };
 
-        if (userPreferences.hasHVAC || userPreferences.hasEcologica) {
-          const adjustedData = data.map(item => {
-            let adjustedPM10 = item.pm10;
-            if (userPreferences.hasHVAC && userPreferences.hasEcologica) {
-              adjustedPM10 *= 0.5;
-            } else if (userPreferences.hasHVAC) {
-              adjustedPM10 *= 0.7;
-            } else if (userPreferences.hasEcologica) {
-              adjustedPM10 *= 0.6;
-            }
-            return {
-              x: new Date(item.created_at),
-              y: calculateAnxietyRisk(userPreferences.anxietyLevel || 5, adjustedPM10)
-            };
-          });
-
+        if (showEcologica) {
           formattedData.datasets.push({
-            label: 'Anxiety Risk with Your Preferences',
-            data: adjustedData,
-            borderColor: 'rgb(144, 238, 144)',
-            backgroundColor: 'rgba(144, 238, 144, 0.1)',
+            label: 'With Ecologica',
+            data: data.map(item => ({
+              x: new Date(item.created_at),
+              y: calculateAnxietyRisk(userPreferences.anxietyLevel, item.pm10, true)
+            })),
+            borderColor: 'rgb(100, 149, 237)',
+            backgroundColor: 'rgba(100, 149, 237, 0.1)',
             borderWidth: 2,
             tension: 0.1
           });
@@ -157,7 +163,7 @@ const AnxietyRiskChart = ({ userPreferences }) => {
     };
 
     fetchData();
-  }, [userPreferences]);
+  }, [userPreferences, showEcologica]);
 
   if (isLoading) return <div>Loading anxiety risk data...</div>;
   if (error) return <div>Error: {error}</div>;
@@ -216,19 +222,17 @@ const AnxietyRiskChart = ({ userPreferences }) => {
           justifyContent: 'center'
         }}>
           <DatasetToggle 
-            name="Baseline Anxiety Risk" 
-            isActive={activeDatasets['Baseline Anxiety Risk']} 
+            name="Outdoor" 
+            isActive={activeDatasets['Outdoor']} 
             onToggle={toggleDataset}
             color="rgb(0, 100, 0)"
           />
-          {(hasHVAC || hasEcologica) && (
-            <DatasetToggle 
-              name="Anxiety Risk with Your Preferences" 
-              isActive={activeDatasets['Anxiety Risk with Your Preferences']} 
-              onToggle={toggleDataset}
-              color="rgb(144, 238, 144)"
-            />
-          )}
+          <DatasetToggle 
+            name="With Ecologica" 
+            isActive={showEcologica} 
+            onToggle={() => setShowEcologica(!showEcologica)}
+            color="rgb(100, 149, 237)"
+          />
         </div>
       </div>
       
@@ -248,7 +252,7 @@ const AnxietyRiskChart = ({ userPreferences }) => {
           <div className="key-data-point">
             <span className="key-data-number">
               {weatherData.filter(day => 
-                calculateAnxietyRisk(anxietyLevel, parseFloat(day['PM 10'])) > anxietyLevel
+                calculateAnxietyRisk(anxietyLevel, parseFloat(day['PM 10']), false) > anxietyLevel
               ).length}
             </span>
             <span className="key-data-label">
@@ -258,7 +262,7 @@ const AnxietyRiskChart = ({ userPreferences }) => {
           <div className="key-data-point">
             <span className="key-data-number">
               {Math.max(...weatherData.map(day => 
-                calculateAnxietyRisk(anxietyLevel, parseFloat(day['PM 10']))
+                calculateAnxietyRisk(anxietyLevel, parseFloat(day['PM 10']), false)
               )).toFixed(1)}
             </span>
             <span className="key-data-label">

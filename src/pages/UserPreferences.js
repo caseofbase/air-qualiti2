@@ -99,7 +99,6 @@ const UserPreferences = () => {
         .from('user_preferences')
         .upsert({ 
           user_id: user.id,
-          has_HVAC: preferences.has_HVAC,
           has_ecologgica: preferences.has_ecologgica,
           first_name: preferences.first_name,
           last_name: preferences.last_name,
@@ -214,20 +213,6 @@ const UserPreferences = () => {
                 })}
               />
               Track Anxiety Levels
-            </label>
-          </div>
-
-          <div className="form-group">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={preferences.has_HVAC}
-                onChange={(e) => setPreferences({ 
-                  ...preferences, 
-                  has_HVAC: e.target.checked 
-                })}
-              />
-              Has HVAC
             </label>
           </div>
 
