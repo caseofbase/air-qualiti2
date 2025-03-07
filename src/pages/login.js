@@ -6,17 +6,24 @@ import './styles.css';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(true);
+    setError(null);
 
-    if (error) {
-      setError(error.message);
-    } else if (data && data.user) {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
       const userId = data.user.id;
 
       const { data: userPreferences } = await supabase
@@ -31,8 +38,10 @@ const Login = () => {
       } else {
         navigate('/dashboard'); // If preferences found, redirect to dashboard
       }
-    } else {
-      setError("Unable to retrieve user information.");
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -80,23 +89,46 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
-            <button type="submit">Login</button>
-            <button 
-              type="button" 
-              className="text-button"
-              onClick={() => navigate('/reset-password')}
-            >
-              Forgot Password?
-            </button>
             {error && <p className="error">{error}</p>}
+            <button 
+              type="submit" 
+              disabled={loading}
+              style={styles.button}
+            >
+              {loading ? 'Loading...' : 'Login'}
+            </button>
+            <div style={{ marginTop: '10px', textAlign: 'center' }}>
+              <button 
+                type="button" 
+                className="text-button"
+                onClick={() => navigate('/reset-password')}
+              >
+                Forgot Password?
+              </button>
+            </div>
           </form>
         )}
-        <button className="signup-button" onClick={() => navigate('/signup')}>
+        <button className="signup-button" onClick={() => navigate('/Signup')}>
           Sign Up
         </button>
       </div>
     </div>
   );
+};
+
+const styles = {
+  button: {
+    padding: '0.75rem',
+    backgroundColor: '#123522',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '1rem',
+    ':hover': {
+      backgroundColor: '#1a4d33',
+    },
+  },
 };
 
 export default Login;

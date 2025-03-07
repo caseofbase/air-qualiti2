@@ -1,30 +1,44 @@
 import React, { useState } from 'react';
-import { supabase } from '../../server/services/supabaseClient';
+import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import './styles.css';
 
-const Signup = () => {
+const SignUp = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  const handleSignup = async (e) => {
+  const handleSignUp = async (e) => {
     e.preventDefault();
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      // If signup successful, redirect to questionnaire
+      if (data.user) {
+        navigate('/questionnaire', { state: { user: data.user } });
+      }
+    } catch (error) {
       setError(error.message);
-    } else {
-      alert('Check your email for a confirmation link!');
-      navigate('/thankyou'); // Redirect to thank you page after successful sign-up
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="signup-container">
+    <div className="login-container">
       <div className="container form-container">
         <h2>Sign Up</h2>
-        <form onSubmit={handleSignup}>
+        <form onSubmit={handleSignUp}>
           <input
             type="email"
             placeholder="Email"
@@ -39,15 +53,42 @@ const Signup = () => {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-          <button type="submit">Sign Up</button>
           {error && <p className="error">{error}</p>}
+          <button 
+            type="submit" 
+            disabled={loading}
+            style={styles.button}
+          >
+            {loading ? 'Creating Account...' : 'Sign Up'}
+          </button>
+          <div style={{ marginTop: '10px', textAlign: 'center' }}>
+            <button 
+              type="button" 
+              className="text-button"
+              onClick={() => navigate('/login')}
+            >
+              Already have an account? Login
+            </button>
+          </div>
         </form>
-        <button className="login-button" onClick={() => navigate('/login')}>
-          Login
-        </button>
       </div>
     </div>
   );
 };
 
-export default Signup;
+const styles = {
+  button: {
+    padding: '0.75rem',
+    backgroundColor: '#123522',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '1rem',
+    ':hover': {
+      backgroundColor: '#1a4d33',
+    },
+  },
+};
+
+export default SignUp;
