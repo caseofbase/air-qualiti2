@@ -3,22 +3,20 @@ import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
-  PointElement,
-  LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
   TimeScale
 } from 'chart.js';
-import { Line } from 'react-chartjs-2';
+import { Bar } from 'react-chartjs-2';
 import 'chartjs-adapter-date-fns';
 import { supabase } from '../../supabaseClient';
 
 ChartJS.register(
   CategoryScale,
   LinearScale,
-  PointElement,
-  LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
@@ -82,10 +80,6 @@ const PM25Chart = ({ userPreferences }) => {
     }));
   };
 
-  const calculateDaysOverThreshold = (data, threshold) => {
-    return data.filter(day => parseFloat(day.y) > threshold).length;
-  };
-
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -94,7 +88,7 @@ const PM25Chart = ({ userPreferences }) => {
           .select('*')
           .eq('city', userPreferences.city)
           .order('created_at', { ascending: false })
-          .limit(60);
+          .limit(30);
 
         if (dataError) throw dataError;
 
@@ -102,45 +96,40 @@ const PM25Chart = ({ userPreferences }) => {
 
         const formattedData = {
           labels: data.map(item => new Date(item.created_at)),
-          datasets: [
-            {
-              label: 'Outdoor',
-              data: data.map(item => ({
-                x: new Date(item.created_at),
-                y: item.pm25
-              })),
-              borderColor: 'rgb(0, 100, 0)',
-              backgroundColor: 'rgba(0, 100, 0, 0.1)',
-              borderWidth: 2,
-              tension: 0.1
-            },
-            {
-              label: 'Indoor',
-              data: data.map(item => ({
-                x: new Date(item.created_at),
-                y: calculateIndoorReduction(item.pm25)
-              })),
-              borderColor: 'rgb(144, 238, 144)',
-              backgroundColor: 'rgba(144, 238, 144, 0.1)',
-              borderWidth: 2,
-              tension: 0.1
-            }
-          ]
+          datasets: []
         };
 
+        // Add With Ecologica (bottom layer)
         if (showEcologica) {
           formattedData.datasets.push({
             label: 'With Ecologica',
-            data: data.map(item => ({
-              x: new Date(item.created_at),
-              y: calculateCombinedReduction(item.pm25)
-            })),
-            borderColor: 'rgb(100, 149, 237)',
-            backgroundColor: 'rgba(100, 149, 237, 0.1)',
-            borderWidth: 2,
-            tension: 0.1
+            data: data.map(item => calculateCombinedReduction(item.pm25)),
+            backgroundColor: 'rgba(100, 149, 237, 0.9)',
+            hidden: false,
+            stack: 'stack1',
+            barThickness: 18
           });
         }
+
+        // Add Indoor (middle layer)
+        formattedData.datasets.push({
+          label: 'Indoor',
+          data: data.map(item => calculateIndoorReduction(item.pm25)),
+          backgroundColor: 'rgba(144, 238, 144, 0.9)',
+          hidden: !activeDatasets['Indoor'],
+          stack: 'stack1',
+          barThickness: 18
+        });
+
+        // Add Outdoor (top layer)
+        formattedData.datasets.push({
+          label: 'Outdoor',
+          data: data.map(item => item.pm25),
+          backgroundColor: 'rgba(0, 100, 0, 0.9)',
+          hidden: !activeDatasets['Outdoor'],
+          stack: 'stack1',
+          barThickness: 18
+        });
 
         setChartData(formattedData);
       } catch (err) {
@@ -154,7 +143,12 @@ const PM25Chart = ({ userPreferences }) => {
     if (userPreferences.city) {
       fetchData();
     }
-  }, [userPreferences, showEcologica]);
+  }, [userPreferences, showEcologica, activeDatasets]);
+
+  const calculateDaysOverThreshold = (data, threshold) => {
+    if (!data || !Array.isArray(data)) return 0;
+    return data.filter(value => parseFloat(value) > threshold).length;
+  };
 
   if (isLoading) return <div>Loading PM2.5 data...</div>;
   if (error) return <div>Error: {error}</div>;
@@ -165,6 +159,7 @@ const PM25Chart = ({ userPreferences }) => {
     maintainAspectRatio: false,
     scales: {
       x: {
+        stacked: true,
         type: 'time',
         time: {
           unit: 'day',
@@ -178,6 +173,7 @@ const PM25Chart = ({ userPreferences }) => {
         }
       },
       y: {
+        stacked: true,
         beginAtZero: true,
         title: {
           display: true,
@@ -187,12 +183,27 @@ const PM25Chart = ({ userPreferences }) => {
     },
     plugins: {
       legend: {
-        display: true,
-        position: 'bottom'
+        display: false
       },
       tooltip: {
         mode: 'index',
-        intersect: false
+        intersect: false,
+        callbacks: {
+          label: function(context) {
+            const label = context.dataset.label || '';
+            const value = context.parsed.y;
+            const stackTotal = context.chart.data.datasets.reduce((total, dataset) => {
+              const value = dataset.data[context.dataIndex];
+              return total + (isNaN(value) ? 0 : value);
+            }, 0);
+            
+            if (label === 'With Ecologica') {
+              const reduction = ((context.chart.data.datasets[2].data[context.dataIndex] - value) / context.chart.data.datasets[2].data[context.dataIndex] * 100).toFixed(1);
+              return `${label}: ${value.toFixed(1)} μg/m³ (${reduction}% total reduction)`;
+            }
+            return `${label}: ${stackTotal.toFixed(1)} μg/m³`;
+          }
+        }
       }
     }
   };
@@ -201,7 +212,7 @@ const PM25Chart = ({ userPreferences }) => {
     <div className="content-wrapper">
       <div className="chart-side">
         <div style={{ height: '400px', width: '100%' }}>
-          <Line data={chartData} options={options} />
+          <Bar data={chartData} options={options} />
         </div>
         <div style={{ 
           marginTop: '20px',
@@ -213,20 +224,22 @@ const PM25Chart = ({ userPreferences }) => {
             name="Outdoor" 
             isActive={activeDatasets['Outdoor']} 
             onToggle={toggleDataset}
-            color="rgb(0, 100, 0)"
+            color="rgba(0, 100, 0, 0.8)"
           />
           <DatasetToggle 
             name="Indoor" 
             isActive={activeDatasets['Indoor']} 
             onToggle={toggleDataset}
-            color="rgb(144, 238, 144)"
+            color="rgba(144, 238, 144, 0.8)"
           />
-          <DatasetToggle 
-            name="With Ecologica" 
-            isActive={showEcologica} 
-            onToggle={() => setShowEcologica(!showEcologica)}
-            color="rgb(100, 149, 237)"
-          />
+          {userPreferences.hasEcologica && (
+            <DatasetToggle 
+              name="With Ecologica" 
+              isActive={showEcologica} 
+              onToggle={() => setShowEcologica(!showEcologica)}
+              color="rgba(100, 149, 237, 0.8)"
+            />
+          )}
         </div>
       </div>
       
@@ -237,7 +250,7 @@ const PM25Chart = ({ userPreferences }) => {
         <div className="key-data-points">
           <div className="key-data-point">
             <span className="key-data-number">
-              {calculateDaysOverThreshold(chartData.datasets[0].data, 12)}
+              {calculateDaysOverThreshold(weatherData, 12)}
             </span>
             <span className="key-data-label">
               days over<br />
@@ -246,7 +259,7 @@ const PM25Chart = ({ userPreferences }) => {
           </div>
           <div className="key-data-point">
             <span className="key-data-number">
-              {calculateDaysOverThreshold(chartData.datasets[0].data, 35)}
+              {calculateDaysOverThreshold(weatherData, 35)}
             </span>
             <span className="key-data-label">
               days over<br />
@@ -255,7 +268,7 @@ const PM25Chart = ({ userPreferences }) => {
           </div>
           <div className="key-data-point">
             <span className="key-data-number">
-              {calculateDaysOverThreshold(chartData.datasets[0].data, 55)}
+              {calculateDaysOverThreshold(weatherData, 55)}
             </span>
             <span className="key-data-label">
               days over<br />
@@ -266,27 +279,6 @@ const PM25Chart = ({ userPreferences }) => {
       </div>
     </div>
   );
-};
-
-const styles = {
-  legend: {
-    marginTop: '20px',
-    padding: '15px',
-    backgroundColor: '#f8f9fa',
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-  },
-  legendTitle: {
-    marginBottom: '10px',
-    color: '#2d4739',
-    fontSize: '1rem',
-    fontWeight: 'bold'
-  },
-  legendItem: {
-    margin: '5px 0',
-    color: '#4a7c44',
-    fontSize: '0.9rem'
-  }
 };
 
 export default PM25Chart; 
