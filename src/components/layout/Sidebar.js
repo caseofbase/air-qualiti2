@@ -1,44 +1,31 @@
 import React from 'react';
-import { Nav } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
 
 const Sidebar = () => {
     const location = useLocation();
 
     return (
-        <div className="sidebar" style={styles.sidebar}>
-            <Nav className="flex-column">
-                <Nav.Link 
-                    as={Link} 
-                    to="/dashboard"
-                    active={(location.pathname === '/dashboard').toString()}
-                    style={styles.link}
-                    className={location.pathname === '/dashboard' ? 'active-link' : ''}
+        <div className="sidebar">
+            <div className="nav-content">
+                <Link 
+                    to="/dashboard" 
+                    className={`nav-link ${location.pathname === '/dashboard' ? 'active' : ''}`}
                 >
-                    <i className="bi bi-house-door"></i>
                     Dashboard
-                </Nav.Link>
-                <Nav.Link 
-                    as={Link} 
-                    to="/AnxietyDashboard"
-                    active={(location.pathname === '/AnxietyDashboard').toString()}
-                    style={styles.link}
-                    className={location.pathname === '/AnxietyDashboard' ? 'active-link' : ''}
+                </Link>
+                <Link 
+                    to="/anxietydashboard" 
+                    className={`nav-link ${location.pathname === '/anxietydashboard' ? 'active' : ''}`}
                 >
-                    <i className="bi bi-gear"></i>
                     Anxiety Dashboard
-                </Nav.Link>
-                <Nav.Link 
-                    as={Link} 
-                    to="/preferences"
-                    active={(location.pathname === '/preferences').toString()}
-                    style={styles.link}
-                    className={location.pathname === '/preferences' ? 'active-link' : ''}
+                </Link>
+                <Link 
+                    to="/preferences" 
+                    className={`nav-link ${location.pathname === '/preferences' ? 'active' : ''}`}
                 >
-                    <i className="bi bi-gear"></i>
                     Preferences
-                </Nav.Link>
-            </Nav>
+                </Link>
+            </div>
         </div>
     );
 };

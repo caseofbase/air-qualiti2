@@ -20,11 +20,16 @@ const Login = () => {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: {
+          persistSession: true
+        }
       });
 
       if (error) throw error;
 
       const userId = data.user.id;
+
+      localStorage.setItem('supabase.auth.token', data.session.access_token);
 
       const { data: userPreferences } = await supabase
         .from('user_preferences')
@@ -32,11 +37,10 @@ const Login = () => {
         .eq('user_id', userId)
         .single();
 
-      // If no preferences found, redirect to questionnaire
       if (!userPreferences) {
         navigate('/questionnaire');
       } else {
-        navigate('/dashboard'); // If preferences found, redirect to dashboard
+        navigate('/dashboard');
       }
     } catch (error) {
       setError(error.message);

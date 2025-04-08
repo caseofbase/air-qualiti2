@@ -146,8 +146,8 @@ const PM25Chart = ({ userPreferences }) => {
   }, [userPreferences, showEcologica, activeDatasets]);
 
   const calculateDaysOverThreshold = (data, threshold) => {
-    if (!data || !Array.isArray(data)) return 0;
-    return data.filter(value => parseFloat(value) > threshold).length;
+    if (!data || !data.length) return 0;
+    return data.filter(day => parseFloat(day.pm25) > threshold).length;
   };
 
   if (isLoading) return <div>Loading PM2.5 data...</div>;
@@ -214,32 +214,16 @@ const PM25Chart = ({ userPreferences }) => {
         <div style={{ height: '400px', width: '100%' }}>
           <Bar data={chartData} options={options} />
         </div>
-        <div style={{ 
-          marginTop: '20px',
-          display: 'flex',
-          gap: '20px',
-          justifyContent: 'center'
-        }}>
-          <DatasetToggle 
-            name="Outdoor" 
-            isActive={activeDatasets['Outdoor']} 
-            onToggle={toggleDataset}
-            color="rgba(0, 100, 0, 0.8)"
-          />
-          <DatasetToggle 
-            name="Indoor" 
-            isActive={activeDatasets['Indoor']} 
-            onToggle={toggleDataset}
-            color="rgba(144, 238, 144, 0.8)"
-          />
-          {userPreferences.hasEcologica && (
-            <DatasetToggle 
-              name="With Ecologica" 
-              isActive={showEcologica} 
-              onToggle={() => setShowEcologica(!showEcologica)}
-              color="rgba(100, 149, 237, 0.8)"
-            />
-          )}
+        <div className="chart-legend">
+          {chartData.datasets.map((dataset, index) => (
+            <div key={index} className="legend-item" onClick={() => toggleDataset(dataset.label)}>
+              <span 
+                className="legend-color" 
+                style={{ backgroundColor: dataset.borderColor }}
+              ></span>
+              <span>{dataset.label}</span>
+            </div>
+          ))}
         </div>
       </div>
       
@@ -250,7 +234,7 @@ const PM25Chart = ({ userPreferences }) => {
         <div className="key-data-points">
           <div className="key-data-point">
             <span className="key-data-number">
-              {calculateDaysOverThreshold(weatherData, 12)}
+              {weatherData && calculateDaysOverThreshold(weatherData, 12)}
             </span>
             <span className="key-data-label">
               days over<br />
@@ -259,7 +243,7 @@ const PM25Chart = ({ userPreferences }) => {
           </div>
           <div className="key-data-point">
             <span className="key-data-number">
-              {calculateDaysOverThreshold(weatherData, 35)}
+              {weatherData && calculateDaysOverThreshold(weatherData, 35)}
             </span>
             <span className="key-data-label">
               days over<br />
@@ -268,7 +252,7 @@ const PM25Chart = ({ userPreferences }) => {
           </div>
           <div className="key-data-point">
             <span className="key-data-number">
-              {calculateDaysOverThreshold(weatherData, 55)}
+              {weatherData && calculateDaysOverThreshold(weatherData, 55)}
             </span>
             <span className="key-data-label">
               days over<br />
