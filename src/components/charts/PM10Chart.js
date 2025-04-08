@@ -208,20 +208,22 @@ const PM10Chart = ({ userPreferences }) => {
             name="Outdoor" 
             isActive={activeDatasets['Outdoor']} 
             onToggle={toggleDataset}
-            color="rgb(0, 100, 0)"
+            color="rgba(0, 100, 0, 0.8)"
           />
           <DatasetToggle 
             name="Indoor" 
             isActive={activeDatasets['Indoor']} 
             onToggle={toggleDataset}
-            color="rgb(144, 238, 144)"
+            color="rgba(144, 238, 144, 0.8)"
           />
-          <DatasetToggle 
-            name="With Ecologica" 
-            isActive={showEcologica} 
-            onToggle={() => setShowEcologica(!showEcologica)}
-            color="rgb(100, 149, 237)"
-          />
+          {userPreferences.hasEcologica && (
+            <DatasetToggle 
+              name="With Ecologica" 
+              isActive={showEcologica} 
+              onToggle={() => setShowEcologica(!showEcologica)}
+              color="rgba(100, 149, 237, 0.8)"
+            />
+          )}
         </div>
       </div>
       

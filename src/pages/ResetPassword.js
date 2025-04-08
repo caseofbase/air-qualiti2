@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { supabase } from '../../server/services/supabaseClient';
+import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import './styles.css';
 
 const ResetPassword = () => {
-  const [email, setEmail] = useState('');
+  const [email, setEnomail] = useState('');
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);

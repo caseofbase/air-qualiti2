@@ -1,8 +1,9 @@
 // MainRouter.js
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from '../server/services/supabaseClient';
 import Navbar from './Navbar';
+import Sidebar from './components/layout/Sidebar';
 import Login from './pages/login';
 import SignUp from './pages/signUp';
 import Dashboard from './pages/dashboard/Dashboard';
@@ -12,170 +13,64 @@ import Questionnaire from './Questionnaire';
 import UserPreferences from './pages/UserPreferences';
 import ResetPassword from './pages/ResetPassword';
 
-const MainRouter = ({ user, session }) => {
-  const [hasPreferences, setHasPreferences] = useState(false);
+const MainRouter = () => {
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const checkUserSession = async () => {
-    try {
-      console.log("Checking user session...");
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        console.error("Error fetching session:", sessionError.message);
-        setHasPreferences(false);
-        setLoading(false);
-        return false; // Return false to indicate no valid session
-      }
-  
-      if (sessionData && sessionData.session) {
-        console.log("Session found for user ID:", sessionData.session.user.id);
-  
-        // Check if the user has preferences
-        const { data: preferences, error: preferencesError } = await supabase
-          .from('user_preferences')
-          .select('*')
-          .eq('user_id', sessionData.session.user.id)
-          .single();
-  
-        if (preferencesError) {
-          console.error("Error fetching user preferences:", preferencesError.message);
-          setHasPreferences(false);
-        } else {
-          setHasPreferences(!!preferences);
-        }
-        return true; // Return true to indicate valid session
-      } else {
-        console.log("No active session found or user ID is missing.");
-        setHasPreferences(false);
-        setLoading(false);
-        return false; // Return false to indicate no valid session
-      }
-    } catch (error) {
-      console.error("Unexpected error checking session:", error);
-      setHasPreferences(false);
-      setLoading(false);
-      return false; // Return false on error
-    } finally {
-      console.log("Setting loading to false");
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
-    const initializeSession = async () => {
-      const hasValidSession = await checkUserSession();
-      if (!hasValidSession && !loading) {
-        console.log("No valid session, redirecting to login");
-        // Instead of redirecting here, we'll let the router handle it
+    const checkUserSession = async () => {
+      try {
+        setLoading(true);
+        // Get the current session from Supabase
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          console.log("Session found, user is logged in");
+          setUser(session.user);
+        } else {
+          console.log("No active session found");
+          setUser(null);
+        }
+      } catch (error) {
+        console.error("Error checking session:", error);
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
     };
 
-    initializeSession();
+    checkUserSession();
 
-    // Listen for authentication state changes
+    // Set up auth state listener
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        console.log("Auth state change detected: user logged in");
-        checkUserSession();
-      } else {
-        console.log("Auth state change detected: user logged out");
-        setHasPreferences(false);
-        setLoading(false);
-      }
+      setUser(session?.user || null);
     });
 
-    return () => authListener?.subscription.unsubscribe();
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
   }, []);
-
-  // Function to check if route should be protected
-  const ProtectedRoute = ({ children }) => {
-    if (!user) {
-      return <Navigate to="/Login" replace />;
-    }
-    return children;
-  };
-
-  // Function to check if user should be redirected from auth pages
-  const AuthRoute = ({ children }) => {
-    if (user) {
-      return <Navigate to="/dashboard" replace />;
-    }
-    return children;
-  };
 
   if (loading) return <div>Loading...</div>;
 
   return (
     <Router>
-      <Navbar />
-      <Routes>
-        {/* Public routes */}
-        <Route 
-          path="/Login" 
-          element={
-            <AuthRoute>
-              <Login />
-            </AuthRoute>
-          } 
-        />
-        <Route 
-          path="/signup" 
-          element={
-            <AuthRoute>
-              <SignUp />
-            </AuthRoute>
-          } 
-        />
-        <Route path="/reset-password" element={<ResetPassword />} />
-
-        {/* Protected routes */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/questionnaire"
-          element={
-            <ProtectedRoute>
-              <Questionnaire />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/userpreferences"
-          element={
-            <ProtectedRoute>
-              <UserPreferences />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/brainhealth"
-          element={
-            <ProtectedRoute>
-              <BrainHealthPM2_5 />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Default route */}
-        <Route 
-          path="/" 
-          element={
-            user ? (
-              <Navigate to="/dashboard" replace />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          } 
-        />
-      </Routes>
+      <div className="app-container">
+        <Navbar />
+        <div className="main-layout">
+          {user && <Sidebar />}
+          <div className="main-content">
+            <Routes>
+              <Route path="/Login" element={<Login />} />
+              <Route path="/signup" element={<SignUp />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/userpreferences" element={<UserPreferences />} />
+              <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} />
+            </Routes>
+          </div>
+        </div>
+      </div>
     </Router>
   );
 };
